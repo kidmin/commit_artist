@@ -31,10 +31,10 @@ pub fn latest_commit_hash(path: &str) -> String {
             .args(vec!["-C", &path, "log", "-1", "--format=%H"])
             .output()
             .unwrap_or_else(|_| {
-                panic!(format!(
+                panic!(
                     "Error in executing `git -C {} log` -1 --format=%H",
                     path
-                ))
+                )
             })
             .stdout,
     )
@@ -50,10 +50,10 @@ pub fn cat_file(path: &str, hash: &str) -> String {
             .args(vec!["-C", &path, "cat-file", "-p", hash])
             .output()
             .unwrap_or_else(|_| {
-                panic!(format!(
+                panic!(
                     "Erorr in executing `git -C {} cat-file -p {}`",
                     path, hash
-                ))
+                )
             })
             .stdout,
     )
