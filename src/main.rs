@@ -5,7 +5,6 @@ mod settings;
 use crate::external_command as command;
 use crate::git::commit_object::CommitObject;
 use crate::settings::Settings;
-use crypto::sha1::Sha1;
 use seahorse::{App, Context, Flag, FlagType};
 use std::env;
 use std::sync::mpsc::channel;
@@ -105,7 +104,6 @@ fn bruteforce(settings: Settings, commit_object: &CommitObject, job_count: usize
                 let tx = tx.clone();
 
                 hash_worker.spawn(move || {
-                    let mut hasher = Sha1::new();
                     let mut co = commit_object.to_owned();
                     co.committer = {
                         let mut committer = co.committer;
@@ -114,13 +112,12 @@ fn bruteforce(settings: Settings, commit_object: &CommitObject, job_count: usize
                             .push_str(format!("{}", iteration_count * job_count + i).as_str());
                         committer
                     };
-                    co.to_sha1(&mut hasher);
-                    let mut commit_hash = co.to_sha1(&mut hasher);
+                    let mut commit_hash = co.to_sha1();
 
                     for _ in 0..1u64 << settings.block_size {
                         co.committer.name = commit_hash.clone();
                         let pre = commit_hash.clone();
-                        commit_hash = co.to_sha1(&mut hasher);
+                        commit_hash = co.to_sha1();
                         if commit_hash.starts_with(settings.pattern.as_str()) {
                             tx.send(Some(pre)).unwrap();
                             return;

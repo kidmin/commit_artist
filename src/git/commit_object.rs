@@ -1,5 +1,5 @@
 use super::Gitter;
-use crypto::{digest::Digest, sha1::Sha1};
+use sha1::{Digest, Sha1};
 use regex::Regex;
 
 #[derive(Clone)]
@@ -96,11 +96,8 @@ impl CommitObject {
     }
 
     /// Calculate commit hash
-    pub fn to_sha1(&self, hasher: &mut Sha1) -> String {
-        hasher.input_str(&format!("commit {}\0{}", self.bytes(), self));
-        let r = hasher.result_str();
-        hasher.reset();
-        r
+    pub fn to_sha1(&self) -> String {
+        format!("{:x}", Sha1::digest(format!("commit {}\0{}", self.bytes(), self).as_str()))
     }
 }
 
