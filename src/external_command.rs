@@ -63,6 +63,8 @@ pub fn cat_file(path: &str, hash: &str) -> String {
 /// Change committer name of the commit whose hash is specified.
 pub fn filter_branch(path: &str, latest_commit_hash: &str, committer_name: &str) {
     Command::new("git")
+        // TODO
+        .env("FILTER_BRANCH_SQUELCH_WARNING", "1")
         .args(&[
             "-C",
             path,
