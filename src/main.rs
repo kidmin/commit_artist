@@ -93,47 +93,49 @@ fn art(c: &Context) {
 
 /// Spawn bruteforce thread and catch the result and check it and loop back unless there are no expected result.
 fn bruteforce(settings: Settings, commit_object: &CommitObject, job_count: usize) -> String {
-    let mut found_hash: String = "".to_owned();
+    let mut found_hash = String::new();
     let mut iteration_count = 0;
     let (tx, rx) = channel();
     println!();
 
     while found_hash.is_empty() {
-        for i in 0..job_count {
-            let settings: Settings = settings.clone();
-            let tx = tx.clone();
-            let mut co = commit_object.clone();
+        thread::scope(|hash_worker| {
+            for i in 0..job_count {
+                let settings = &settings;
+                let tx = tx.clone();
 
-            thread::spawn(move || {
-                let mut hasher = Sha1::new();
-                co.committer = {
-                    let mut committer = co.committer;
-                    committer
-                        .name
-                        .push_str(&(iteration_count * job_count + i).to_string());
-                    committer
-                };
-                co.to_sha1(&mut hasher);
-                let mut commit_hash = co.to_sha1(&mut hasher);
+                hash_worker.spawn(move || {
+                    let mut hasher = Sha1::new();
+                    let mut co = commit_object.to_owned();
+                    co.committer = {
+                        let mut committer = co.committer;
+                        committer
+                            .name
+                            .push_str(format!("{}", iteration_count * job_count + i).as_str());
+                        committer
+                    };
+                    co.to_sha1(&mut hasher);
+                    let mut commit_hash = co.to_sha1(&mut hasher);
 
-                for _ in 0..1u64 << settings.block_size {
-                    co.committer.name = commit_hash.clone();
-                    let pre = commit_hash.clone();
-                    commit_hash = co.to_sha1(&mut hasher);
-                    if commit_hash.starts_with(&settings.pattern) {
-                        tx.send(Some(pre)).unwrap();
-                        return;
+                    for _ in 0..1u64 << settings.block_size {
+                        co.committer.name = commit_hash.clone();
+                        let pre = commit_hash.clone();
+                        commit_hash = co.to_sha1(&mut hasher);
+                        if commit_hash.starts_with(settings.pattern.as_str()) {
+                            tx.send(Some(pre)).unwrap();
+                            return;
+                        }
                     }
-                }
-                tx.send(None).unwrap();
-            });
-        }
-        for _ in 0..job_count {
-            let r = rx.recv().unwrap();
-            if let Some(r) = r {
-                found_hash = r;
+                    tx.send(None).unwrap();
+                });
             }
-        }
+            for _ in 0..job_count {
+                let r = rx.recv().unwrap();
+                if let Some(r) = r {
+                    found_hash = r;
+                }
+            }
+        });
         iteration_count += 1;
         println!(
             "\x1b[1A{} hashes calculated...",
